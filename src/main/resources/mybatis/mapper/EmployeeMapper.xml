@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--mappers:将sql映射注册到全局配置中-->
+<mapper namespace="com.movev.springbootdatajdbc.mapper.EmployeeMapper">
+
+    <!--public Employee getEmpById(Integer id);-->
+    <!--自定义某个JavaBean的封装规则
+        type:自定义规则的Java类型
+        id:唯一id 方便引用
+    -->
+    <resultMap id="MySimpleEmp" type="com.movev.springbootdatajdbc.bean.Employee">
+        <!--指定组件列的封装规则
+            id:定义组件会地层优化规则
+            column：指定那一列
+            property: 指定对应JavaBean属性
+            -->
+        <id column="id" property="id"/>
+        <!--普通列封装规则-->
+        <result column="lastName" property="lastName"/>
+        <!--其他不指定的列会自动封装；推荐写上全部的映射规则-->
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+    </resultMap>
+
+    <!--resultMap:自定义结果集映射规则-->
+    <select id="getEmpById" resultMap="MySimpleEmp">
+        select * from
+            employee
+        where
+            id = #{id}
+    </select>
+
+    <!--
+        场景1：
+        查询Employee的同时查询员工对应的部门ID
+        一个员工都有与之对应的部门信息；
+
+    -->
+    <!--
+        联合查询:级联属性封装结果集
+     -->
+    <resultMap id="MyDifEmp" type="com.movev.springbootdatajdbc.bean.Employee">
+        <id column="id" property="id"/>
+        <result column="last_name" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+        <result column="department_name" property="department.departmentName"/>
+        <result column="did" property="department.id"/>
+    </resultMap>
+
+    <!--使用association定义关联的单个对象的封装规则-->
+    <resultMap id="MyDifEmp2" type="com.movev.springbootdatajdbc.bean.Employee">
+        <id column="id" property="id"/>
+        <result column="last_name" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+        <!--association可以指定联合javaBean对象，property：指定那个属性是联合对象，javaType指定这个属性对象的类型 不能省略-->
+        <association property="department" javaType="com.movev.springbootdatajdbc.bean.Department">
+            <id column="did" property="id"/>
+            <result column="department_name" property="departmentName" />
+        </association>
+    </resultMap>
+    <!--public Employee getEmpAndDept(Integer id);-->
+    <select id="getEmpAndDept" resultMap="MyDifEmp2">
+          SELECT e.id id,e.lastName last_name,e.email email,e.gender gender,e.d_id d_id,d.departmentName department_name,d.id did
+          FROM employee e,department d
+          WHERE e.d_id=d.id
+          AND e.id=#{id}
+    </select>
+
+    <!--使用association进行分段查询
+        1.先按员工ID 查询员工信息
+        2.根据查询员工信息中的d_id值查询
+    -->
+    <resultMap id="MyEmpByStep" type="com.movev.springbootdatajdbc.bean.Employee">
+        <id column="id" property="id"/>
+        <result column="lastName" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+        <!--association定义关联对象的封装规则
+            select：表明当前属性是调用select指定的方法查出的结果
+            column: 指定将那一列的值传给这个方法
+        -->
+        <association property="department" select="com.movev.springbootdatajdbc.mapper.DepartmentMapper.getDeptById" column="d_id">
+        </association>
+    </resultMap>
+    <!--public Employee getEmpByIdStep(Integer id);-->
+    <select id="getEmpByIdStep" resultMap="MyEmpByStep">
+        select * from
+            employee
+        where
+            id = #{id}
+    </select>
+    <!--可以使用延时加载：
+        Employee==>Department
+            我们每次查询Employee对象的时候，都将一起查出。
+            部门信息在我们使用的时候再去查询；
+            分段查询的基础之上加上两个配置：
+    -->
+
+    <!--查询部门的时候将部门对应的所有员工信息也查询出来-->
+    <!--public List<Employee> getEmpsByDeptId(Integer deptId);-->
+    <select id="getEmpsByDeptId" resultType="com.movev.springbootdatajdbc.bean.Employee">
+          select * from employee where d_id = #{deptId}
+    </select>
+
+    <!--resultType:结果类型-->
+    <select id="getEmpByIdAndLastName" resultType="com.movev.springbootdatajdbc.bean.Employee">
+        select * from employee where id = #{id} and lastName = #{lastName}
+    </select>
+
+    <!--Oracle不支持自增;Oracle使用序列来模拟自增;每次插入的数据的主键是从序列中拿到的值；-->
+
+    <!--<insert id="insertEmp" databaseId="oracle" >-->
+<!--&#45;&#45;         order="BEFORE"当前SQL在插入之前执行-->
+<!--&#45;&#45;            resultType查出返回值类型-->
+        <!--<selectKey keyProperty="id" order="BEFORE" resultType="Integer">-->
+<!--&#45;&#45;             编写查询主键的SQL语句-->
+            <!--select EMPLOYEES_SEQ.nextval from dula-->
+            <!--获取当前主键 order="AFTER"-->
+            <!--select EMPLOYEES_SEQ.currval from dula-->
+        <!--</selectKey>-->
+<!--&#45;&#45;          插入时的主键是从序列中拿到的-->
+        <!--insert into-->
+            <!--employee(id,lastName,email,gender,d_id)-->
+        <!--values-->
+             <!--oracle不支持other-->
+            <!--(#{id},#{lastName},#{email,jdbcType = null},#{gender},#{dId})-->
+    <!--</insert>-->
+
+
+    <!--public List<Employee> getEmpsByLastNameLike(String lastName);-->
+    <!--resultType:如果返回的是一个集合，要写集合中元素的类型-->
+    <select id="getEmpsByLastNameLike" resultType="com.movev.springbootdatajdbc.bean.Employee">
+        select * from employee where lastName like "%"#{lastName}"%"
+    </select>
+
+    <!--&lt;!&ndash;public Map<Integer,Employee> getEmpByLastNameLikeReturnMap(String LastName);&ndash;&gt;-->
+    <select id="getEmpByLastNameLikeReturnMap" resultType="com.movev.springbootdatajdbc.bean.Employee">
+        select * from employee where lastName like #{lastName}
+    </select>
+
+    <!--public Map<String,Object> getEmpByIdReturnMap(Integer id);-->
+    <select id="getEmpByIdReturnMap" resultType="map">
+        select * from
+            employee
+        where
+            id = #{id}
+    </select>
+
+
+    <!--public void insertEmp(Employee employee);-->
+    <!--useGeneratedKeys使用自增主键获取主键值策略,keyPropert指定对应的主键属性-->
+    <insert id="insertEmp" useGeneratedKeys="true" keyProperty="id" >
+        insert into
+            employee(lastName,email,gender,d_id)
+        values
+            (#{lastName},#{email},#{gender},#{dId})
+    </insert>
+
+
+    <!--public void updateEmp(Employee employee);-->
+    <update id="updateEmp">
+        update
+            employee
+       <trim prefix="set" suffixOverrides=",">
+           <if test="lastName != null">
+               lastName = #{lastName},
+           </if>
+           <if test="email != null">
+               email = #{email},
+           </if>
+           <if test="gender != null">
+               gender = #{gender},
+           </if>
+           <if test="dId != null">
+               d_id = #{dId},
+           </if>
+       </trim>
+        where
+            id = #{id}
+    </update>
+
+
+    <!--public void deleteEmpById(Integer id);-->
+    <delete id="deleteEmpById">
+        delete from
+            employee
+        where
+            id = #{id}
+
+    </delete>
+
+    <!--
+        if
+        choose(when,otherwise)
+        trim(where,set)
+        foreach
+    -->
+    <!--public List<Employee> getEmpsByConditionIf(Employee employee);-->
+    <select id="getEmpsByConditionIf" resultType="com.movev.springbootdatajdbc.bean.Employee">
+        select * from
+            employee
+
+        <!--
+            where标签将所有的查询条件包括在内，MyBatis就会将where标签中拼装是SQL，多出来的and或者or去掉
+            where只会去掉第一个多出来的and or。
+        -->
+        <where>
+            <!--test 判断表达式(OGNL)-->
+            <if test="id != null">
+                id = #{id}
+            </if>
+            <if test="lastName != null and lastName = &quot;&quot;">
+                and lastName like #{lastName}
+            </if>
+            <if test="email != null and email.trim() != &quot;&quot;">
+                and email = #{email}
+            </if>
+            <if test="gender == 0 or gender == 1 ">
+                and gender = #{gender}
+            </if>
+        </where>
+    </select>
+
+
+    <!--public List<Employee> getEmpsByConditionTrim(Employee employee);-->
+    <select id="getEmpsByConditionTrim" resultType="com.movev.springbootdatajdbc.bean.Employee">
+          select * from
+              employee
+        <!--
+         trim字符串截取
+           prefix="" 前缀 trim标签体中是整个字符串拼串后的结果prefix给拼串后的整个字符串加一个前缀
+           prefixOverrides="" 前缀覆盖 去掉整个字符串前面多余的字符
+           suffix="" 后缀 给拼串后的整个字符串加一个后缀
+           suffixOverrides=""后缀覆盖 去掉整个字符串后面多余的字符
+        -->
+         <trim prefix="where" prefixOverrides="and">
+             <if test="id != null">
+                 id = #{id}
+             </if>
+             <if test="lastName != null and lastName = ''">
+                 and lastName like #{lastName}
+             </if>
+             <if test="email != null and email.trim() != ''">
+                 and email = #{email}
+             </if>
+             <if test="gender == 0 or gender == 1 ">
+                 and gender = #{gender}
+             </if>
+         </trim>
+    </select>
+
+
+    <!--public List<Employee> getEmpsByConditionChoose();-->
+    <select id="getEmpsByConditionChoose" resultType="com.movev.springbootdatajdbc.bean.Employee">
+        select * from
+            employee
+        <where>
+            <!--如果带了id就用id查，如果带了lastName就用lastName查；只会进入其中一个-->
+            <choose>
+                <when test="id != null">
+                    id = #{id}
+                </when>
+                <when test="lastName != null">
+                    lastName like #{lastName}
+                </when>
+                <when test="email != null">
+                    email = #{email}
+                </when>
+                <otherwise>
+                    gender = 0
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+
+
+    <!--public void updateEmps(Employee employee);-->
+    <update id="updateEmps" >
+        update
+            employee
+        <set>
+            <if test="lastName != null">
+                lastName = #{lastName},
+            </if>
+            <if test="email != null">
+                email = #{email},
+            </if>
+            <if test="gender != null">
+                gender = #{gender},
+            </if>
+            <if test="dId != null">
+                d_id = #{dId},
+            </if>
+        </set>
+        where
+            id = #{id}
+    </update>
+
+
+    <!--public List<Employee> getEmpsByConditionForeach(List<Integer> list);-->
+    <select id="getEmpsByConditionForeach" resultType="com.movev.springbootdatajdbc.bean.Employee">
+        select * from employee
+        <!--
+            collection:指定要遍历的集合：
+                list类型的参数会特殊处理封装在map中，map的key就叫list
+            item: 将当前遍历出来的元素赋值给指定的变量
+            separator: 元素之间的分隔符
+            open: 遍历出结果开始
+            close： 遍历出结果结束
+            index： 索引 遍历list的时候是索引 item就是当前值
+                         遍历map的时候index表示的就是map的KEy，item就是map的值
+            #{变量名}就能取出变量的值也就是当前遍历出的元素
+        -->
+        <foreach collection="ids" item="item_id" separator="," open="where id in(" close=")" index="i">
+            #{item_id}
+        </foreach>
+    </select>
+
+    <!--批量保存-->
+    <!--public void addEmps(@Param("emps") List<Employee> emps);-->
+    <!--MySQL下批量保存：可以foreach遍历 MySQL支持values(),(),()语法-->
+    <insert id="addEmps">
+          insert into
+              employee(lastName,email,gender,d_id)
+          values
+          <foreach collection="emps" item="emp" separator=",">
+              (#{emp.lastName},#{emp.email},#{emp.gender},#{emp.dId})
+          </foreach>
+    </insert>
+
+
+    <!--这种方式需要数据库连接属性allowMultiQueries=true这种分号分隔多个sql可以用于其他的批量操作（删除，修改）-->
+    <!--<insert id="addEmps">-->
+        <!--<foreach collection="emps" item="emp" separator=";">-->
+            <!--insert into-->
+                <!--employee(lastName,email,gender,d_id)-->
+            <!--values-->
+                <!--(#{emp.lastName},#{emp.email},#{emp.gender},#{emp.dId})-->
+        <!--</foreach>-->
+    <!--</insert>-->
+
+    <!--oracle数据库批量保存
+              oracle不支持values(),(),()
+              oracle支持的批量方式
+              1，多个insert 放在begin - end里面
+                    begin
+                        employee(employee_id,lastName,email,gender,d_id)
+                        values(employee_sep.nextval,'text_001','text_002','wwww.sdf',1,2);
+                        employee(employee_id,lastName,email,gender,d_id)
+                        values(employee_sep.nextval,'text_001','text_002','wwww.sdf',1,2);
+                    end;
+    -->
+
+
+    <!-- 两个内置参数：
+         不只是方法传递过来的参数可以用阿里被判断，取值。。。
+         mybatis默认还有两个内置参数：
+         _parameter代表整个参数
+             单个参数：_parameter就是参数
+             多个参数：参数会被封装为一个map；_parameter就是代表着个map
+
+         _databaseId: 如果配置了DatabaseIdProvider标签。
+              _databaseId就是代表当前的数据库别名
+    -->
+    <!--public List<Employee> getEmpsTestInnerParameter(Employee employee);-->
+    <select id="getEmpsTestInnerParameter" resultType="com.movev.springbootdatajdbc.bean.Employee">
+          <!--<if test="_databaseId == 'mysql'">-->
+              select * from employee
+              order by id desc
+              <!--<if test="_parameter != null">-->
+                  <!--where lastName = #{_parameter.lastName}-->
+              <!--</if>-->
+          <!--</if>-->
+          <!--<if test="_databaseId == 'oracle'">-->
+              <!--select * from employees-->
+          <!--</if>-->
+    </select>
+
+
+    <!--
+        抽取可重用的sql片段。方便后面引用
+    -->
+
+    <sql id="">
+
+    </sql>
+</mapper>

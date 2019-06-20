@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.movev.springbootdatajdbc.mapper.ClassifyMapper">
+    <select id="getClassifyAll" resultMap="categoryMap">
+        SELECT * FROM class WHERE 1 = 1
+            <choose>
+                <when test="id == 0">AND class.parentId is not null </when>
+                <otherwise>AND id = #{id} </otherwise>
+            </choose>
+    </select>
+
+
+    <resultMap id="categoryMap" type="com.movev.springbootdatajdbc.bean.Classify">
+        <id property="id" column="id"></id>
+        <result property="name" column="name"></result>
+        <result property="parentId" column="parentId"></result>
+        <collection property="categoryList" select="com.movev.springbootdatajdbc.mapper.ClassifyMapper.getById" column="id">
+        </collection>
+    </resultMap>
+
+    <select id="getById" resultMap="categoryMap">
+        SELECT *
+        FROM class
+        WHERE parentId = #{id}
+    </select>
+
+</mapper>
